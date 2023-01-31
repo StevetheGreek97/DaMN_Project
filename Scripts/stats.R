@@ -12,7 +12,7 @@
 ##          Ramsy Agha, 
 ##          Noemi Azoubib, 
 ##          Charlotte Schampera, 
-##          Justyna Wolinska1
+##          Justyna Wolinska
 
 ## Corresponding author: florent.vmanzi@gmail.com
 
@@ -23,10 +23,12 @@ library(car)
 library(ggpubr)
 library(survival)
 library(survminer)
-
+library(tableone)
+library(SingleCaseES)
+setwd('C:\\Users\\styli\\Desktop\\DaMN_project\\Scripts')
 # Importing Dependencies
-source("Final_Scripts/Utils.R")
-source("Final_Scripts/Preprocessing.R")
+source("Utils.R")
+source("Preprocessing.R")
 
 # 1. Parasite Fitness -----------------------------------------------------
 ## a. Host Viability ----
@@ -39,8 +41,9 @@ bn_HV <- glm(formula = Retrieved ~ NP_treatment,
              data = binom_HV)
 
 summary(bn_HV)
-Anova(bn_HV, type = 2)
-
+aov(bn_HV, type = 2)
+0.842995 + 6.268116
+(0.842995 /7.111111)*100
 ## b.Parasite reproduction ----
 
 model_PR <- aov(Spore_yield ~ NP_treatment, data = InfH)
@@ -69,8 +72,9 @@ bn_PI <- glm(formula = Inf_mets ~ NP_treatment,
 
 summary(bn_PI)
 
-Anova(bn_PI, type = 2)
-
+aov(bn_PI, type = 2)
+1.74015  + 12.99423
+(1.74015 /14.73438)*100
 ##d. Net Parasite Output ----
 
 model_II <- aov(Spore_yield ~ NP_treatment, data = Mets)
@@ -119,7 +123,8 @@ bn_HRM <- glm(formula = binom_HRM$maturity ~ Inf_treatment * NP_treatment,
 summary(bn_HRM)
 
 
-Anova(bn_HRM, type="III")
+aov(bn_HRM, type="II")
+(0.447571/ 20.207)*100
 
 ## c.Host Fecundity ----
 
@@ -177,3 +182,102 @@ for (status in inf_treatments) {
   
 }
 
+## SMD ----
+
+get_SMD <- function(data, vars, inf = F) {
+    str = c("NP_treatment")
+    if (inf == T) {
+      str = c("NP_treatment")}
+      
+    tabUnmatched <- CreateTableOne(vars = vars, strata = str, data = data, test = FALSE)
+    ## Show table with SMD
+    print(tabUnmatched, smd = TRUE)
+  
+}
+
+
+get_SMD(Reproduced_at_least1, 'Total_juv') # Host fecundity
+get_SMD(d, c("Age_death", "maturity")) # Host lifespan, Proportion of hosts that reproduced
+
+
+
+get_SMD <- function(df, level,column, infection) {
+  
+  df_treatment <- subset(df,  Inf_treatment == infection)
+  
+  smd <- SMD(condition  = df_treatment$NP_treatment,  
+             outcome = df_treatment[[column]], 
+             baseline_phase  = 'Zero',
+             intervention_phase = level,
+             improvement = "increase")
+  
+  print(smd)
+  
+}
+
+get_SMD(df= Reproduced_at_least1, 
+        level = 'High', 
+        infection = 'Control',
+        column = 'Total_juv'
+        
+        )
+
+## Getting SMDs
+
+# Host fecundity
+np_treatments <- c('Low', 'High')
+inf_treatments <- c('Infected', 'Control')
+
+for (np in np_treatments ) {
+  for (status in inf_treatments ) {
+    print(paste('Zero',status,  '-', np, status) )
+    
+    get_SMD(df = Reproduced_at_least1,
+                  column = 'Total_juv',
+                  infection = status, 
+                  level = np
+    
+    )
+    print('')
+    
+  }
+}
+
+# Host lifespan
+
+np_treatments <- c('Low', 'High')
+inf_treatments <- c('Infected', 'Control')
+print('Host lifespan')
+for (np in np_treatments ) {
+  for (status in inf_treatments ) {
+    print(paste('Zero Control -', np, status) )
+    
+    get_SMD(df = d,
+            column = 'Age_death',
+            infection = status, 
+            level = np
+            
+    )
+    print('')
+    
+  }
+}
+
+# Host that reproduced
+np_treatments <- c('Low', 'High')
+inf_treatments <- c('Infected', 'Control')
+
+for (np in np_treatments ) {
+  for (status in inf_treatments ) {
+    print(paste('Zero Control -', np, status) )
+    
+    get_SMD(df = d,
+            column = 'maturity',
+            infection = status, 
+            level = np
+            
+    )
+    print('')
+    
+  }
+}
